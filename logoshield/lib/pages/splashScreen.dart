@@ -3,7 +3,7 @@ import 'package:logoshield/components/constant.dart';
 import 'package:logoshield/pages/scanPage.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({ Key? key }) : super(key: key);
+  const SplashScreen({ key }) : super(key: key);
 
   @override
   _SplashScreenState createState() => _SplashScreenState();

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:logoshield/components/constant.dart';
+import 'package:camerawesome/models/flashmodes.dart';
 
 class BottomBarWidget extends StatelessWidget {
   final Function onZoomInTap;
   final Function onZoomOutTap;
   final Function onFlashTap;
+  final ValueNotifier<CameraFlashes> switchFlash;
   
   BottomBarWidget({ 
-    Key? key, 
-    required this.onZoomInTap, 
-    required this.onZoomOutTap, 
-    required this.onFlashTap 
+    key, 
+    @required this.onZoomInTap, 
+    @required this.onZoomOutTap, 
+    @required this.onFlashTap,
+    @required this.switchFlash, 
     }) : super(key: key);
 
   @override
@@ -47,7 +50,7 @@ class BottomBarWidget extends StatelessWidget {
                     color: warna1(),
                   ),
                   child: Icon(
-                    Icons.flash_on_sharp,
+                    getFlashIcon(),
                     size: screenHeight(context)*(1/23),
                     color: Colors.blue,
                   ),
@@ -77,5 +80,20 @@ class BottomBarWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  IconData getFlashIcon() {
+    switch (switchFlash.value) {
+      case CameraFlashes.NONE:
+        return Icons.flash_off;
+      case CameraFlashes.ON:
+        return Icons.flash_on;
+      case CameraFlashes.AUTO:
+        return Icons.flash_auto;
+      case CameraFlashes.ALWAYS:
+        return Icons.highlight;
+      default:
+        return Icons.flash_off;
+    }
   }
 }

@@ -3,7 +3,7 @@ import 'package:logoshield/components/constant.dart';
 import 'package:logoshield/components/resultRow.dart';
 
 class ResultPage extends StatefulWidget {
-  const ResultPage({Key? key}) : super(key: key);
+  const ResultPage({key}) : super(key: key);
 
   @override
   _ResultPageState createState() => _ResultPageState();
