@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:logoshield/components/constant.dart';
@@ -58,9 +57,12 @@ class _ResultPageState extends State<ResultPage> {
                   width: screenHeight(context)*(1/5),
                   height: screenHeight(context)*(1/5),
                   //color: Colors.orange,
-                  child: Image.file(
-                    File(widget.imgPath.path),
-                    fit: BoxFit.cover,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.file(
+                      File(widget.imgPath.path),
+                      fit: BoxFit.cover,
+                    ),
                   )
                 ),
                 SizedBox(

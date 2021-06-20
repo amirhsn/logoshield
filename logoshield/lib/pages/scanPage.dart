@@ -5,6 +5,10 @@ import 'package:logoshield/components/cameraOverlay.dart';
 import 'package:logoshield/components/constant.dart';
 import 'package:cupertino_icons/cupertino_icons.dart';
 import 'package:logoshield/pages/resultPage.dart';
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({ key }) : super(key: key);
@@ -17,7 +21,7 @@ class _ScanPageState extends State<ScanPage> {
   CameraController cameraController;
   List cameras;
   int selectedCameraIndex;
-  
+
   @override
     void initState() {
       // TODO: implement initState
@@ -82,7 +86,7 @@ class _ScanPageState extends State<ScanPage> {
                 width: double.infinity,
                 padding: EdgeInsets.all(15),
                 margin: EdgeInsets.only(
-                  bottom: 20,
+                  bottom: screenHeight(context)*(1/20),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -99,7 +103,8 @@ class _ScanPageState extends State<ScanPage> {
       ),
     );
   }
-
+//====================================================================//
+//====================================================================//
   Widget cameraPreview(){
     if(cameraController == null || !cameraController.value.isInitialized){
       return Text(
@@ -114,8 +119,6 @@ class _ScanPageState extends State<ScanPage> {
       child: CameraPreview(cameraController),
     );
   }
-
-  
 
   Widget cameraFlashWidget(){
     if(cameras == null || cameras.isEmpty){
@@ -146,6 +149,30 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 
+  Widget cameraControlWidget(context){
+    return Expanded(
+      child: Align(
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            FloatingActionButton(
+              onPressed: (){
+                onCapture(context);
+              },
+              backgroundColor: warna1(),
+              child: Icon(
+                Icons.camera,
+                color: Colors.black,
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+//====================================================================//
   getFlashIcon(flashStatus){
     switch (flashStatus){
       case FlashMode.off:
@@ -160,7 +187,8 @@ class _ScanPageState extends State<ScanPage> {
         return Icons.device_unknown;
     }
   }
-
+//====================================================================//
+//====================================================================//
   onSwitchFlash(){
     FlashMode selectedFlashNow = cameraController.value.flashMode;
     if (selectedFlashNow == FlashMode.off){
@@ -199,42 +227,54 @@ class _ScanPageState extends State<ScanPage> {
     }
   }
 
-  cameraControlWidget(context){
-    return Expanded(
-      child: Align(
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            FloatingActionButton(
-              onPressed: (){
-                onCapture(context);
-              },
-              backgroundColor: warna1(),
-              child: Icon(
-                Icons.camera,
-                color: Colors.black,
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
   onCapture(context) async{
     try{
       cameraController.takePicture().then((value) {
         print(value);
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ResultPage(imgPath: value,)));
+        prepareDetection(File(value.path));
+        //Navigator.push(context, MaterialPageRoute(builder: (_) => ResultPage(imgPath: value,)));
       });
     }catch(e){
       print('capture gagal');
     }
   }
+//====================================================================//
+//====================================================================//
+  prepareDetection(File imageFile){
+    ImageProcessor imageProcessor = ImageProcessorBuilder()
+      .add(ResizeOp(224, 224, ResizeMethod.NEAREST_NEIGHBOUR))
+      .build();
+    TensorImage tensorImage = TensorImage.fromFile(imageFile);
+    tensorImage = imageProcessor.process(tensorImage);
+    //output
+    TensorBuffer probabilityBuffer = TensorBuffer.createFixedSize(<int>[1, 4], TfLiteType.uint8);
+    loadingModelDetection(tensorImage, probabilityBuffer);
+  }
 
-  
+  loadingModelDetection(TensorImage tensorImage, TensorBuffer probabilityBuffer) async{
+    try {
+        Interpreter interpreter =
+            await Interpreter.fromAsset("model.tflite");
+        interpreter.run(tensorImage.buffer, probabilityBuffer.buffer);
+        //List arrayHasil = probabilityBuffer.getDoubleList();
+        //for(int i=0;i<arrayHasil.length;i++){
+        //  arrayHasil[i] = arrayHasil[i] / 255;
+        //}
+        //print(arrayHasil);
+        mappingHasil(probabilityBuffer);
+    } catch (e) {
+        print('Error loading model: ' + e.toString());
+    }
+  }
+
+  mappingHasil(probabilityBuffer) async{
+    List<String> labels = await FileUtil.loadLabels("assets/labels.txt");
+    TensorLabel tensorLabel = TensorLabel.fromList(
+      labels, probabilityBuffer);
+
+    Map<String, double> doubleMap = tensorLabel.getMapWithFloatValue();
+    print(doubleMap);
+  }
 //===========================================================//
 //===========================================================//
 
