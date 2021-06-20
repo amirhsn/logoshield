@@ -1,9 +1,13 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:logoshield/components/constant.dart';
 import 'package:logoshield/components/resultRow.dart';
 
 class ResultPage extends StatefulWidget {
-  const ResultPage({key}) : super(key: key);
+  final XFile imgPath;
+  const ResultPage({key, this.imgPath}) : super(key: key);
 
   @override
   _ResultPageState createState() => _ResultPageState();
@@ -22,7 +26,7 @@ class _ResultPageState extends State<ResultPage> {
               color: Colors.black,
             ), 
             onPressed: (){
-              print('work');
+              Navigator.pop(context);
             }
           ),
           elevation: 0,
@@ -54,11 +58,10 @@ class _ResultPageState extends State<ResultPage> {
                   width: screenHeight(context)*(1/5),
                   height: screenHeight(context)*(1/5),
                   //color: Colors.orange,
-                  child: Icon(
-                    Icons.check,
-                    size: screenHeight(context)*(1/8),
-                    color: Colors.green,
-                  ),
+                  child: Image.file(
+                    File(widget.imgPath.path),
+                    fit: BoxFit.cover,
+                  )
                 ),
                 SizedBox(
                   height: screenHeight(context)*(1/100),

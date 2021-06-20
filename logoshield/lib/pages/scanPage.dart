@@ -1,17 +1,10 @@
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:tflite/tflite.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:logoshield/components/bottomBar.dart';
+import 'package:camera/camera.dart';
+import 'package:logoshield/components/cameraOverlay.dart';
 import 'package:logoshield/components/constant.dart';
-import 'package:camerawesome/camerapreview.dart';
-import 'package:camerawesome/camerawesome_plugin.dart';
-import 'package:camerawesome/models/capture_modes.dart';
-import 'package:camerawesome/models/flashmodes.dart';
-import 'package:camerawesome/models/orientations.dart';
-import 'package:camerawesome/models/sensors.dart';
-import 'package:camerawesome/picture_controller.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:cupertino_icons/cupertino_icons.dart';
+import 'package:logoshield/pages/resultPage.dart';
 
 class ScanPage extends StatefulWidget {
   const ScanPage({ key }) : super(key: key);
@@ -21,174 +14,230 @@ class ScanPage extends StatefulWidget {
 }
 
 class _ScanPageState extends State<ScanPage> {
-  ValueNotifier<CameraFlashes> _switchFlash = ValueNotifier(CameraFlashes.ON);
-  ValueNotifier<double> _zoomNotifier = ValueNotifier(0);
-  ValueNotifier<Size> _photoSize = ValueNotifier(Size.infinite);
-  ValueNotifier<Sensors> _sensor = ValueNotifier(Sensors.BACK);
-  ValueNotifier<CaptureModes> _captureMode = ValueNotifier(CaptureModes.PHOTO);
-  ValueNotifier<bool> _enableAudio = ValueNotifier(true);
-  ValueNotifier<CameraOrientations> _orientation = ValueNotifier(CameraOrientations.PORTRAIT_UP);
-
-  /// use this to call a take picture
-  PictureController _pictureController = PictureController();
-  Stream<Uint8List> previewStream;
+  CameraController cameraController;
+  List cameras;
+  int selectedCameraIndex;
+  
+  @override
+    void initState() {
+      // TODO: implement initState
+      super.initState();
+      availableCameras().then((value) {
+        cameras = value;
+        if(cameras.length > 0){
+          selectedCameraIndex = 0;
+          initCamera(cameras[selectedCameraIndex],).then((_){});
+        }else{
+          print('error');
+        }
+      }).catchError((e){
+        print(e.code);
+      });
+    }
 
   @override
-  void initState(){
-    super.initState();
-    loadModel().then((value){
+    void dispose() {
+      // TODO: implement dispose
+      super.dispose();
+    }
+
+  Future initCamera(CameraDescription cameraDescription) async{
+    if (cameraController != null){
+      await cameraController.dispose();
+    }
+    cameraController = CameraController(cameraDescription, ResolutionPreset.veryHigh);
+    cameraController.addListener(() {if (mounted){
       setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    Tflite.close();
-    _photoSize.dispose();
-    _captureMode.dispose();
-    super.dispose();
-  }
-
-  bool _loading = false;
-  File _image;
-  var _output;
-
-  classifyImage(File image) async{
-    var output = await Tflite.runModelOnImage(
-      path: image.path,
-      numResults: 4,
-      threshold: 0.5,
-      imageMean: 127.5,
-      imageStd: 127.5,
-    );
-    setState(() {
-          _output = output;
-          _loading = false;
-    });
-  }
-
-  checkImageStream(File image) async{
-    var output = await Tflite.runModelOnImage(
-      path: image.path,
-      numResults: 4,
-      threshold: 0.5,
-      imageMean: 127.5,
-      imageStd: 127.5,
-    );
-    setState(() {
-          _output = output;
-          _loading = false;
-    });
-    print(output);
-  }
-
-  loadModel() async{
-    await Tflite.loadModel(
-      model: 'assets/ml/model.tflite',
-      labels: 'assets/ml/labels.txt'
-    );
-  }
-
-
+    }});
+    if (cameraController.value.hasError){
+      print('Camera Error');
+    }
+    try{
+      await cameraController.initialize();
+    }catch(e){
+      print('Camera error'+e);
+    }
+    if(mounted){
+      setState(() {});
+    }
+  }  
 
   @override
   Widget build(BuildContext context) {
-    print(screenHeight(context));
     return Scaffold(
-      body: Stack(
-        children: [
-          Center(
-            child: Container(
-              width: screenWidth(context),
-              height: screenHeight(context),
-              child: GestureDetector(
-                child: CameraAwesome(
-                  selectDefaultSize: (List<Size> availableSizes) => availableSizes[0],
-                  onCameraStarted: () { },
-                  zoom: _zoomNotifier,
-                  sensor: _sensor,
-                  photoSize: _photoSize,
-                  switchFlashMode: _switchFlash,
-                  captureMode: _captureMode,
-                  fitted: false,
-                  imagesStreamBuilder: (imageStream){
-                    setState(() {
-                      previewStream = imageStream;
-                    });
-                    imageStream.listen((Uint8List imageData){
-                      //print("...${DateTime.now()} new image received... ${imageData.lengthInBytes} bytes");
-                      _takePhoto();
-                      checkImageStream(_image);
-                    });
-                  },
+      backgroundColor: Colors.black,
+      body: Container(
+        child: Stack(
+          children: [
+            Align(
+              alignment: Alignment.center,
+              child: cameraPreview(),
+            ),
+            cameraOverlay(
+              padding: 50, aspectRatio: 1, color: Color(0x55000000)),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: screenHeight(context)*(1/7),
+                width: double.infinity,
+                padding: EdgeInsets.all(15),
+                margin: EdgeInsets.only(
+                  bottom: 20,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    cameraFlashWidget(),
+                    cameraControlWidget(context),
+                    Spacer(),
+                  ],
                 ),
               ),
             ),
-          ),
-          Center(
-            child: Container(
-              width: screenHeight(context)*(1/3.7),
-              height: screenHeight(context)*(1/3.7),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: Colors.blue,
-                  width: 2
-                )
-              ),
-            ),
-          ),
-          BottomBarWidget(
-            onZoomInTap: () {
-              if (_zoomNotifier.value <= 0.9) {
-                _zoomNotifier.value += 0.1;
-              }
-              setState(() {});
-            }, 
-            onZoomOutTap: () {
-              if (_zoomNotifier.value >= 0.1) {
-                _zoomNotifier.value -= 0.1;
-              }
-              setState(() {});
-            }, 
-            onFlashTap: (){
-              switch (_switchFlash.value){
-                case CameraFlashes.NONE:
-                  _switchFlash.value = CameraFlashes.ON;
-                  break;
-                case CameraFlashes.ON:
-                  _switchFlash.value = CameraFlashes.NONE;
-                  break;
-                case CameraFlashes.AUTO:
-                  _switchFlash.value = CameraFlashes.NONE;
-                  break;
-                case CameraFlashes.ALWAYS:
-                  _switchFlash.value = CameraFlashes.NONE;
-                  break;      
-              }
-              setState(() {});
-            },
-            switchFlash: _switchFlash,
-          )
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  _takePhoto() async {
-    final Directory extDir = await getTemporaryDirectory();
-    final testDir =
-        await Directory('${extDir.path}/test').create(recursive: true);
-    final String filePath = '${testDir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await _pictureController.takePicture(filePath);
-    print("----------------------------------");
-    print("TAKE PHOTO CALLED");
-    final file = File(filePath);
-    print("==> hastakePhoto : ${file.exists()} | path : $filePath");
-    //final img = imgUtils.decodeImage(file.readAsBytesSync());
-    //print("==> img.width : ${img.width} | img.height : ${img.height}");
-    print("----------------------------------");
-    _image = File(filePath);
+  Widget cameraPreview(){
+    if(cameraController == null || !cameraController.value.isInitialized){
+      return Text(
+        'Loading',
+        style: TextStyle(
+          color: warna1()
+        ),
+      );
+    }
+    return AspectRatio(
+      aspectRatio: cameraController.value.aspectRatio,
+      child: CameraPreview(cameraController),
+    );
   }
 
+  
+
+  Widget cameraFlashWidget(){
+    if(cameras == null || cameras.isEmpty){
+      return Spacer();
+    }
+    return Expanded(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: IconButton(
+          onPressed: (){
+            onSwitchFlash();
+          }, 
+          icon: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(100),
+              color: warna1()
+            ),
+            height: screenWidth(context)*(1/10),
+            width: screenWidth(context)*(1/10),
+            child: Icon(
+              getFlashIcon(cameraController.value.flashMode),
+              color: Colors.black,
+              size: screenHeight(context)*(1/25),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  getFlashIcon(flashStatus){
+    switch (flashStatus){
+      case FlashMode.off:
+        return Icons.flash_off_rounded;
+      case FlashMode.always:
+        return Icons.flash_on_rounded;
+      case FlashMode.auto:
+        return Icons.flash_auto_rounded;
+      case FlashMode.torch:
+        return Icons.touch_app_rounded;  
+      default:
+        return Icons.device_unknown;
+    }
+  }
+
+  onSwitchFlash(){
+    FlashMode selectedFlashNow = cameraController.value.flashMode;
+    if (selectedFlashNow == FlashMode.off){
+      selectedFlashNow = FlashMode.always;
+      onSetFlashModeButtonPressed(selectedFlashNow);
+    }
+    else if (selectedFlashNow == FlashMode.always){
+      selectedFlashNow = FlashMode.auto;
+      onSetFlashModeButtonPressed(selectedFlashNow);
+    }
+    else if (selectedFlashNow == FlashMode.auto){
+      selectedFlashNow = FlashMode.torch;
+      onSetFlashModeButtonPressed(selectedFlashNow);
+    }  
+    else if (selectedFlashNow == FlashMode.torch){
+      selectedFlashNow = FlashMode.off;
+      onSetFlashModeButtonPressed(selectedFlashNow);
+    }
+  }
+
+  void onSetFlashModeButtonPressed(FlashMode mode) {
+    setFlashMode(mode).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  Future<void> setFlashMode(FlashMode mode) async {
+    if (cameraController == null) {
+      return;
+    }
+
+    try {
+      await cameraController.setFlashMode(mode);
+    } on CameraException catch (e) {
+      print(e.toString());
+    }
+  }
+
+  cameraControlWidget(context){
+    return Expanded(
+      child: Align(
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            FloatingActionButton(
+              onPressed: (){
+                onCapture(context);
+              },
+              backgroundColor: warna1(),
+              child: Icon(
+                Icons.camera,
+                color: Colors.black,
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  onCapture(context) async{
+    try{
+      cameraController.takePicture().then((value) {
+        print(value);
+        Navigator.push(context, MaterialPageRoute(builder: (_) => ResultPage(imgPath: value,)));
+      });
+    }catch(e){
+      print('capture gagal');
+    }
+  }
+
+  
+//===========================================================//
+//===========================================================//
+
+
+  
 }

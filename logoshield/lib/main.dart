@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:logoshield/pages/resultPage.dart';
-import 'package:logoshield/pages/scanPage.dart';
 import 'package:logoshield/pages/splashScreen.dart';
 
 void main() {
@@ -16,7 +14,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: ScanPage(),
+      home: SplashScreen(),
     );
   }
 }
