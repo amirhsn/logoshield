@@ -1,23 +1,20 @@
-import 'dart:math';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:logoshield/components/cameraOverlay.dart';
 import 'package:logoshield/components/constant.dart';
 import 'package:logoshield/pages/resultPage.dart';
 import 'dart:io';
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
 
-class ScanPage extends StatefulWidget {
-  const ScanPage({ key }) : super(key: key);
+import 'package:tflite/tflite.dart';
+
+class ScanPageO extends StatefulWidget {
+  const ScanPageO({ key }) : super(key: key);
 
   @override
-  _ScanPageState createState() => _ScanPageState();
+  _ScanPageOState createState() => _ScanPageOState();
 }
 
-class _ScanPageState extends State<ScanPage> {
+class _ScanPageOState extends State<ScanPageO> {
   CameraController cameraController;
   List cameras;
   int selectedCameraIndex;
@@ -26,16 +23,13 @@ class _ScanPageState extends State<ScanPage> {
   var rawImage;
   /* bool _isDetecting = false;
   var _imageSaved; */
-  Interpreter interpreter;
 
-  var labelKey;
-  var labelValues;
+
 
   @override
     void initState() {
       // TODO: implement initState
       super.initState();
-      loadModel();
       availableCameras().then((value) {
         cameras = value;
         if(cameras.length > 0){
@@ -54,11 +48,6 @@ class _ScanPageState extends State<ScanPage> {
       // TODO: implement dispose
       super.dispose();
     }
-
-  loadModel() async{
-    interpreter =
-            await Interpreter.fromAsset("model.tflite");
-  }  
 
   Future initCamera(CameraDescription cameraDescription) async{
     if (cameraController != null){
@@ -114,8 +103,6 @@ class _ScanPageState extends State<ScanPage> {
               alignment: Alignment.center,
               child: cameraPreview(),
             ),
-            cameraOverlay(
-              padding: 50, aspectRatio: 1, color: Color(0x55000000)),
             GestureDetector(
               onScaleUpdate: (one){
                 scale = one.scale;
@@ -281,7 +268,6 @@ class _ScanPageState extends State<ScanPage> {
           _imageSaved = File(value.path);
           rawImage = value;
         });
-        prepareDetection(_imageSaved);
       });
     }catch(e){
       print('capture gagal');
@@ -289,45 +275,7 @@ class _ScanPageState extends State<ScanPage> {
   }
 //====================================================================//
 //====================================================================//
-  prepareDetection(File imageFile){
-    ImageProcessor imageProcessor = ImageProcessorBuilder()
-      .add(ResizeOp(interpreter.getInputTensor(0).shape[1], interpreter.getInputTensor(0).shape[2], ResizeMethod.NEAREST_NEIGHBOUR))
-      .build();
-    TensorImage tensorImage = TensorImage.fromFile(imageFile);
-    tensorImage = imageProcessor.process(tensorImage);
-    //output
-    TensorBuffer probabilityBuffer = TensorBuffer.createFixedSize(<int>[1, 4], TfLiteType.uint8);
-    loadingModelDetection(tensorImage, probabilityBuffer);
-  }
-
-  loadingModelDetection(TensorImage tensorImage, TensorBuffer probabilityBuffer) async{
-    try {
-        interpreter =
-            await Interpreter.fromAsset("model.tflite");
-        interpreter.run(tensorImage.buffer, probabilityBuffer.buffer);
-        List arrayHasil = probabilityBuffer.getDoubleList();
-        //for(int i=0;i<arrayHasil.length;i++){
-        //  arrayHasil[i] = arrayHasil[i] / 255;
-        //}
-        //print(arrayHasil);
-        labelValues = arrayHasil.cast<num>().reduce(max);
-        mappingHasil(probabilityBuffer, arrayHasil.indexOf(labelValues));
-    } catch (e) {
-        print('Error loading model: ' + e.toString());
-    }
-  }
-
-  mappingHasil(probabilityBuffer, int x) async{
-    List<String> labels = await FileUtil.loadLabels("assets/labels.txt");
-    TensorLabel tensorLabel = TensorLabel.fromList(
-      labels, probabilityBuffer);
-
-    Map<String, double> doubleMap = tensorLabel.getMapWithFloatValue();
-    print(doubleMap);
-    labelKey = labels[x];
-    print(labelKey);
-    Navigator.push(context, MaterialPageRoute(builder: (_) => ResultPage(imgPath: rawImage)));
-  }
+  
 //===========================================================//
 //===========================================================//
 

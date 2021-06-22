@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:logoshield/pages/homeView.dart';
+import 'package:logoshield/pages/scanPageO.dart';
 import 'package:logoshield/pages/splashScreen.dart';
 
 void main() {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:logoshield/components/constant.dart';
+import 'package:logoshield/pages/homeView.dart';
 import 'package:logoshield/pages/scanPage.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
       (){
         Navigator.pushReplacement(context, MaterialPageRoute(
-          builder: (context) => ScanPage(),
+          builder: (context) => HomeView(),
         ));
       }
     );
